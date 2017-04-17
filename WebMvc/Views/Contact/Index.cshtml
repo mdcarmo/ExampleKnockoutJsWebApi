@@ -1,0 +1,252 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .help-block {color: #f8dbdb;font-size: 0.9em;font-weight:bold;}
+    .has-error{background-color: #f8dbdb; border-color: #e77776;}
+</style>
+<div class="row">
+    <div class="col-md-12">
+        <div data-bind="ifnot: Contact()">
+            <div class="page-header">
+                <h2>Register contact</h2>
+            </div>
+            <div class="row">
+                <div class="col-sm-3">
+                    <label for="txtFirstName">First Name</label>
+                    <input id="txtFirstName" type="text" class="form-control" data-bind="value: $root.firstName" />
+                </div>
+                <div class="col-sm-3">
+                    <label for="txtLastName">Last Name</label>
+                    <input id="txtLastName" type="text" class="form-control" data-bind="value: $root.lastName" />
+                </div>
+                <div class="col-sm-3">
+                    <label for="txtEmail">Email</label>
+                    <input id="txtEmail" type="text" class="form-control" data-bind="value: $root.email" />
+                </div>
+                <div class="col-sm-3">
+                    <label for="txtPhone">Phone</label>
+                    <input id="txtPhone" type="text" class="form-control" data-bind="value: $root.phone" />
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-sm-4">
+                    <button data-bind="click: $root.create" class="btn btn-primary">Save</button>
+                    <button data-bind="click: $root.reset" class="btn btn-primary">Reset</button>
+                </div>
+            </div>
+        </div>
+        <div data-bind="if: Contact()">
+            <div class="page-header">
+                <h2>Alter contact</h2>
+            </div>
+            <div class="row">
+                <div class="col-sm-3">
+                    <label for="txtFirstName">First Name</label>
+                    <input id="txtFirstName" type="text" class="form-control" data-bind="value: Contact().firstName" />
+                </div>
+                <div class="col-sm-3">
+                    <label for="txtLastName">Last Name</label>
+                    <input id="txtLastName" type="text" class="form-control" data-bind="value: Contact().lastName" />
+                </div>
+                <div class="col-sm-3">
+                    <label for="txtEmail">Email</label>
+                    <input id="txtEmail" type="text" class="form-control" data-bind="value: Contact().email" />
+                </div>
+                <div class="col-sm-3">
+                    <label for="txtPhone">Phone</label>
+                    <input id="txtPhone" type="text" class="form-control" data-bind="value: Contact().phone" />
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-sm-4">
+                <button data-bind="click: $root.update" class="btn btn-primary">Update</button>
+                <button data-bind="click: $root.cancel" class="btn btn-primary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<br />
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h2 class="panel-title">Registered contacts</h2>
+            </div>
+            <div class="panel-body">
+                <table class="table table-striped table-bordered table-condensed" data-bind="visible: Contacts().length > 0">
+                    <thead>
+                        <tr>
+                            <th style="display: block;">ID</th>
+                            <th>Name</th>
+                            <th>Last Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody data-bind="foreach: Contacts">
+                        <tr>
+                            <td data-bind="visible:true , text: id "></td>
+                            <td data-bind="text: firstName"></td>
+                            <td data-bind="text: lastName"></td>
+                            <td data-bind="text: email"></td>
+                            <td data-bind="text: phone"></td>
+                            <td>
+                                <button data-bind="click: $root.edit" class="btn btn-primary btn-xs">Edit</button>
+                                <button data-bind="click: $root.delete" class="btn btn-danger btn-xs">Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts
+{
+    <script language="javascript">
+        var baseUri = "http://localhost:29725/api/v1/public/";
+
+        var toastrOverrides = {
+            debug: false,
+            timeOut: 2000,
+            showClose: true,
+            extendedTimeOut: 1000,
+            fadeIn: 300,
+            fadeOut: 300
+        };
+        
+        var ContactViewModel = function(){
+            var self = this;
+
+            self.id = ko.observable("");
+            self.firstName = ko.observable().extend({required: {message: 'First name is required.'}});
+            self.lastName = ko.observable().extend({required: {message: 'Last name is required.'}});
+            self.email = ko.observable().extend({ required: { message: 'Email is required.' }, email: true });
+            self.phone = ko.observable().extend({ required: { message: 'Phone is required.' } });
+
+            var Contact = {
+                id: self.id,
+                firstName: self.firstName,
+                lastName: self.lastName,
+                email: self.email,
+                phone: self.phone
+            };
+
+            var refresh = function () {
+                $.getJSON(baseUri + 'contacts', self.Contacts);
+            };
+
+            self.Contact = ko.observable();
+            self.Contacts = ko.observableArray();
+            self.errors = ko.validation.group(this, { observable: true, deep: true });
+
+            refresh();
+
+            
+
+            self.create = function () {
+                if (self.errors().length === 0) {
+                    $.ajax({
+                        url: baseUri + 'add',
+                        cache: false,
+                        type: 'POST',
+                        contentType: 'application/json; charset=utf-8',
+                        data: ko.toJSON(Contact),
+                        success: function (data) {
+                            self.firstName("");
+                            self.lastName("");
+                            self.email("");
+                            self.phone("");
+                            self.errors.showAllMessages(false);
+                            self.Contacts.push(data);
+                            toastr.success("Contact successfully registered", toastrOverrides);
+                        }
+                    }).fail(function (xhr, textStatus, err) {
+                        toastr.error("There was an error while trying to insert the contact: " + err, toastrOverrides);
+                    });
+                } else {
+                    self.errors.showAllMessages(true);
+                }
+            }
+           
+            self.delete = function (Contact) {
+                bootbox.confirm('Are you sure to delete contact: "' + Contact.firstName + '" ??',
+                    function (result) {
+                        if (result) {
+                            $.ajax({
+                                url: baseUri + 'del/' + Contact.id,
+                                cache: false,
+                                type: 'DELETE',
+                                contentType: 'application/json; charset=utf-8',
+                                data: Contact.id,
+                                success: function (data) {
+                                    toastr.success("Contact deleted successfully", toastrOverrides);
+                                    self.Contacts.remove(Contact);
+                                }
+                            }).fail(
+                                function (xhr, textStatus, err) {
+                                    toastr.error("There was an error while trying to delete the contact: " + err, toastrOverrides);
+                            });
+                        }
+                    });
+                };
+
+            self.edit = function (Contact) {
+                self.Contact(Contact);
+            }
+
+            self.update = function () {
+                var Contact = self.Contact();
+
+                $.ajax({
+                    url: baseUri + 'upd',
+                    cache: false,
+                    type: 'PUT',
+                    contentType: 'application/json; charset=utf-8',
+                    data: ko.toJSON(Contact),
+                    success: function (data) {
+                        self.Contact(null);
+                        //$.getJSON(baseUri + 'contacts', self.Contacts);
+                        refresh();
+                        toastr.success("Contact changed successfully", toastrOverrides);
+                    }
+                }).fail(function (xhr, textStatus, err) {
+                    toastr.error("There was an error while trying to change the contact: " + err, toastrOverrides);
+                });
+            }
+            
+            self.reset = function () {
+                self.firstName("");
+                self.lastName("");
+                self.email("");
+                self.phone("");
+                self.errors.showAllMessages(false);
+            }
+
+            self.cancel = function () {
+                self.Contact(null);
+                self.errors(null);
+                self.errors.showAllMessages(false);
+            }
+        }
+       
+        $(function () {
+            ko.validation.init({
+                insertMessages: true,
+                decorateInputElement: true,
+                errorElementClass: 'has-error',
+                errorMessageClass: 'help-block'
+            });
+
+            var viewModel = new ContactViewModel();
+            ko.applyBindings(viewModel);
+        });
+    </script>
+}
